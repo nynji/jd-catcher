@@ -1,0 +1,31 @@
+name: Crawl Linkareer
+
+on:
+  schedule:
+    - cron: "0 22 * * *" # 07:00 KST
+    - cron: "0 5 * * *" # 14:00 KST
+    - cron: "0 10 * * *" # 19:00 KST
+  workflow_dispatch:
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r crawler/requirements.txt
+          playwright install chromium
+
+      - name: Run crawler
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python crawler/run.py
