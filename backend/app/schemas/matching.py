@@ -14,8 +14,4 @@ class MatchResult(BaseModel):
     linkareer_url: str
     apply_url: str | None
     match_score: int
-
-
-class ExplainResponse(BaseModel):
-    application_id: int
-    explanation: str
+    reason: str

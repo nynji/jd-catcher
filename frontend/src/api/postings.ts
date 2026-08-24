@@ -26,3 +26,8 @@ export function fetchPostings(
 export function fetchPosting(postingId: number): Promise<PostingDetail> {
   return request<PostingDetail>(`/postings/${postingId}`)
 }
+
+export async function fetchPostingCount(): Promise<number> {
+  const result = await request<{ total: number }>('/postings/count')
+  return result.total
+}

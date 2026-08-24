@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchStoredMatches } from '../api/resumes'
-import { explainApplication } from '../api/applications'
 import { analyzeMatch } from '../api/matches'
 import type { MatchResult } from '../types/matching'
 
@@ -22,20 +21,12 @@ function scoreTier(score: number) {
   return 'low'
 }
 
-interface ExplainModalState {
-  applicationId: number
-  loading: boolean
-  text: string | null
-  error: string | null
-}
-
 export default function MatchPage() {
   const { resumeId } = useParams()
   const navigate = useNavigate()
   const [matches, setMatches] = useState<MatchResult[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [modal, setModal] = useState<ExplainModalState | null>(null)
   const [analyzingRoleId, setAnalyzingRoleId] = useState<number | null>(null)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
 
@@ -62,20 +53,8 @@ export default function MatchPage() {
     }
   }
 
-  async function handleExplain(applicationId: number) {
-    setModal({ applicationId, loading: true, text: null, error: null })
-    try {
-      const result = await explainApplication(applicationId)
-      setModal({ applicationId, loading: false, text: result.explanation, error: null })
-    } catch (reason) {
-      setModal({
-        applicationId,
-        loading: false,
-        text: null,
-        error: reason instanceof Error ? reason.message : '매칭 이유를 불러오지 못했습니다.',
-      })
-    }
-  }
+  // 백엔드가 이미 match_score 내림차순으로 반환하지만, 프론트에서도 동일 기준을 보장한다.
+  const sortedMatches = [...matches].sort((a, b) => b.match_score - a.match_score)
 
   return (
     <main className="page-shell">
@@ -87,7 +66,7 @@ export default function MatchPage() {
           <p className="header-copy">역량 일치율이 높은 순으로 정렬했습니다.</p>
         </div>
         <div className="header-side">
-          <div className="header-stat"><strong>{loading ? '—' : matches.length}</strong><span>매칭된 직무</span></div>
+          <div className="header-stat"><strong>{loading ? '—' : sortedMatches.length}</strong><span>매칭된 직무</span></div>
         </div>
       </header>
 
@@ -99,36 +78,24 @@ export default function MatchPage() {
           <span>{analyzeError}</span>
         </div>
       )}
-      {!loading && !error && matches.length === 0 && (
-        <div className="state-panel"><span>매칭된 공고가 없습니다. 공고에 등록된 요구 역량이 아직 부족할 수 있습니다.</span></div>
+      {!loading && !error && sortedMatches.length === 0 && (
+        <div className="state-panel"><span>매칭된 공고가 없습니다. 이력서를 업로드하고 매칭을 다시 시작해보세요.</span></div>
       )}
-      {!loading && !error && matches.length > 0 && (
+      {!loading && !error && sortedMatches.length > 0 && (
         <section className="posting-grid" aria-label="매칭 결과">
-          {matches.map((match) => (
-            <Link className="posting-card" key={match.role_id} to={`/postings/${match.posting_id}`}>
+          {sortedMatches.map((match) => (
+            <Link className="posting-card match-card" key={match.role_id} to={`/postings/${match.posting_id}`}>
               <div className="card-topline">
                 <span className="company-name">{match.company || '기업 미상'}</span>
                 <span className={`match-badge tier-${scoreTier(match.match_score)}`}>{match.match_score}%</span>
               </div>
               <h2>{match.title || '제목 없는 공고'}</h2>
               <p className="card-job">{(match.role_name ?? '').split('\n')[0] || '직무 미기재'}</p>
+              {match.reason && <p className="match-reason">{match.reason}</p>}
               <div className="card-meta">
                 <span className="deadline">마감 {formatDeadline(match.deadline)}</span>
               </div>
               <div className="match-card-actions">
-                {match.application_id != null && (
-                  <button
-                    type="button"
-                    className="explain-button"
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      void handleExplain(match.application_id as number)
-                    }}
-                  >
-                    매칭 이유 보기
-                  </button>
-                )}
                 <button
                   type="button"
                   className="explain-button"
@@ -149,18 +116,6 @@ export default function MatchPage() {
             </Link>
           ))}
         </section>
-      )}
-
-      {modal && (
-        <div className="modal-backdrop" onClick={() => setModal(null)}>
-          <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
-            <button className="modal-close" aria-label="닫기" onClick={() => setModal(null)}>×</button>
-            <h3>매칭 이유</h3>
-            {modal.loading && <div className="state-panel"><Spinner /><span>생성 중입니다...</span></div>}
-            {modal.error && <p className="muted">{modal.error}</p>}
-            {modal.text && <p className="modal-text">{modal.text}</p>}
-          </div>
-        </div>
       )}
     </main>
   )

@@ -10,7 +10,12 @@ function Spinner() {
   return <span className="spinner" aria-label="처리 중" />
 }
 
-const ACCEPTED_TYPES = ['application/pdf', 'text/plain']
+const ACCEPTED_EXTENSIONS = ['.pdf', '.txt', '.md', '.xlsx', '.docx']
+
+function hasAcceptedExtension(filename: string) {
+  const lower = filename.toLowerCase()
+  return ACCEPTED_EXTENSIONS.some((ext) => lower.endsWith(ext))
+}
 
 export default function ResumePage() {
   const navigate = useNavigate()
@@ -21,6 +26,7 @@ export default function ResumePage() {
   const [skills, setSkills] = useState<MemberSkill[]>([])
   const [resumes, setResumes] = useState<ResumeSummary[]>([])
   const [dragOver, setDragOver] = useState(false)
+  const [uploadingNames, setUploadingNames] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -29,16 +35,18 @@ export default function ResumePage() {
       .catch(() => undefined)
   }, [])
 
-  async function handleFile(file: File) {
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+  async function handleFiles(files: File[]) {
+    const rejected = files.filter((file) => !hasAcceptedExtension(file.name))
+    if (rejected.length > 0) {
       setStatus('error')
-      setError('PDF 또는 텍스트 파일만 업로드할 수 있습니다.')
+      setError(`지원하지 않는 파일 형식입니다: ${rejected.map((file) => file.name).join(', ')}`)
       return
     }
+    setUploadingNames(files.map((file) => file.name))
     setStatus('uploading')
     setError(null)
     try {
-      const result = await uploadResume(file, title)
+      const result = await uploadResume(files, title)
       setResumeId(result.id)
       setSkills(result.skills)
       setStatus('ready')
@@ -79,8 +87,8 @@ export default function ResumePage() {
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
     setDragOver(false)
-    const file = event.dataTransfer.files[0]
-    if (file) void handleFile(file)
+    const files = Array.from(event.dataTransfer.files)
+    if (files.length > 0) void handleFiles(files)
   }
 
   return (
@@ -90,7 +98,7 @@ export default function ResumePage() {
         <div>
           <p className="eyebrow">RESUME</p>
           <h1>이력서를 올리면<br /><em>AI가 역량을 정리해드려요.</em></h1>
-          <p className="header-copy">PDF 또는 텍스트 파일을 올리면 역량을 추출하고, 등록된 공고와 매칭해드립니다.</p>
+          <p className="header-copy">PDF·워드·엑셀·텍스트 파일을 올리면(여러 개 동시 가능) 역량을 추출하고, 등록된 공고와 매칭해드립니다.</p>
         </div>
       </header>
 
@@ -131,23 +139,24 @@ export default function ResumePage() {
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf,text/plain"
+          accept=".pdf,.txt,.md,.xlsx,.docx"
+          multiple
           hidden
           onChange={(event) => {
-            const file = event.target.files?.[0]
-            if (file) void handleFile(file)
+            const files = Array.from(event.target.files ?? [])
+            if (files.length > 0) void handleFiles(files)
             event.target.value = ''
           }}
         />
         {status === 'uploading' ? (
           <>
             <Spinner />
-            <span>AI가 역량을 분석하고 있습니다...</span>
+            <span>{uploadingNames.join(', ')} 분석 중입니다...</span>
           </>
         ) : (
           <>
-            <strong>PDF 또는 텍스트 파일을 여기로 끌어다 놓거나 클릭해서 선택하세요.</strong>
-            <span className="muted">이력서 · 포트폴리오 (PDF/TXT, 최대 10MB)</span>
+            <strong>파일을 여기로 끌어다 놓거나 클릭해서 선택하세요. (여러 개 선택 가능)</strong>
+            <span className="muted">이력서 · 포트폴리오 (PDF/TXT/MD/XLSX/DOCX, 파일당 최대 10MB, 최대 5개)</span>
           </>
         )}
       </section>

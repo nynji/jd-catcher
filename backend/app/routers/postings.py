@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.schemas.posting import PostingDetail, PostingSummary
-from app.services.posting_service import get_posting, list_postings
+from app.services.posting_service import count_postings, get_posting, list_postings
 from app.services.posting_skill_extractor import backfill_posting_skills
 
 router = APIRouter(prefix="/postings", tags=["postings"])
@@ -20,6 +20,11 @@ async def extract_posting_role_skills(db: Session = Depends(get_db)):
     except Exception as error:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"역량 추출에 실패했습니다: {error}") from error
+
+
+@router.get("/count")
+def read_posting_count(db: Session = Depends(get_db)):
+    return {"total": count_postings(db)}
 
 
 @router.get("", response_model=list[PostingSummary])

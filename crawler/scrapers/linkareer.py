@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import date
 import re
-from urllib.parse import urljoin
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from playwright.async_api import Page
 
@@ -105,14 +105,28 @@ async def _title(page: Page, raw_text: str) -> str:
 	return _title_from_raw_text(raw_text)
 
 
+_DETAIL_CONTENT_SELECTORS = [
+	".ActivityDetailTabContent__StyledWrapper-sc-5c325a81-0.fcnVga .responsive-element",
+	".ActivityDetailTabContent__StyledWrapper-sc-5c325a81-0.fcnVga",
+	"article#DETAIL .responsive-element",
+]
+
+
 async def _detail_content(detail: Page) -> tuple[str, list[str]]:
 	"""'상세내용' 탭 영역만 잡는다. 채팅방/스터디모집/합격후기/추천공고는 형제 섹션이라 자동 제외된다."""
-	container = detail.locator("article#DETAIL .responsive-element").first
-	if not await container.count():
+	container = None
+	for selector in _DETAIL_CONTENT_SELECTORS:
+		candidate = detail.locator(selector).first
+		if await candidate.count():
+			container = candidate
+			break
+	if container is None:
 		heading = detail.locator("h2").filter(has_text=re.compile(r"^상세내용$"))
 		if await heading.count():
-			container = heading.first.locator("xpath=following-sibling::*[1]")
-	if not await container.count():
+			candidate = heading.first.locator("xpath=following-sibling::*[1]")
+			if await candidate.count():
+				container = candidate
+	if container is None:
 		return "", []
 
 	text = (await container.inner_text()).strip()
@@ -186,21 +200,30 @@ async def _links(page: Page) -> list[str]:
 	return links
 
 
+def _with_page_number(url: str, page_number: int) -> str:
+	"""목록 URL의 page 쿼리파라미터를 지정한 값으로 바꾼다."""
+	parts = urlsplit(url)
+	query = dict(parse_qsl(parts.query))
+	query["page"] = str(page_number)
+	return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+
 async def crawl(
 	page: Page,
 	url: str,
 	max_pages: int = 5,
 	openai_api_key: str = "",
 ) -> list[Posting]:
-	"""목록에서 상세 페이지를 찾아 공고 원문을 수집한다."""
+	"""목록에서 상세 페이지를 찾아 공고 원문을 수집한다. page=N 쿼리파라미터로 직접 페이지를 이동한다."""
 	postings: list[Posting] = []
 	seen_urls: set[str] = set()
-	current_url = url
 
-	for _ in range(max_pages):
-		await page.goto(current_url, wait_until="domcontentloaded", timeout=60_000)
+	for page_number in range(1, max_pages + 1):
+		await page.goto(_with_page_number(url, page_number), wait_until="domcontentloaded", timeout=60_000)
 		await page.wait_for_timeout(1_500)
 		detail_urls = await _links(page)
+		if not detail_urls:
+			break
 
 		for detail_url in detail_urls:
 			if detail_url in seen_urls:
@@ -245,21 +268,5 @@ async def crawl(
 				)
 			finally:
 				await detail.close()
-
-		next_button = page.locator("button.button-arrow-next").last
-		if await next_button.count():
-			if await next_button.is_disabled():
-				break
-			await next_button.click()
-			await page.wait_for_timeout(1_500)
-			continue
-
-		next_link = page.locator("a[aria-label*='다음'], a:has-text('다음')").last
-		if not await next_link.count():
-			break
-		next_href = await next_link.get_attribute("href")
-		if not next_href:
-			break
-		current_url = urljoin(page.url, next_href)
 
 	return postings

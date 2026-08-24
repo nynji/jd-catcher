@@ -12,9 +12,9 @@ async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export function uploadResume(file: File, title: string): Promise<ResumeUploadResult> {
+export function uploadResume(files: File[], title: string): Promise<ResumeUploadResult> {
   const formData = new FormData()
-  formData.append('file', file)
+  for (const file of files) formData.append('files', file)
   if (title) formData.append('title', title)
   return fetch(`${API_BASE_URL}/resumes`, { method: 'POST', body: formData }).then((response) =>
     readJson<ResumeUploadResult>(response),

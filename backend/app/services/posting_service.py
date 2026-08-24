@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.posting import JobPosting
@@ -13,15 +13,21 @@ def list_postings(
     ordering = (
         JobPosting.deadline.desc().nulls_last()
         if order_by == "deadline"
-        else JobPosting.collected_at.desc()
+        else JobPosting.collected_at.desc().nulls_last()
     )
     statement = (
         select(JobPosting)
-        .order_by(ordering)
+        # id를 2차 정렬 기준으로 둬서 collected_at/deadline 값이 같은 행이 있어도
+        # 페이지마다 순서가 흔들리지 않게(중복/누락 없이) 한다.
+        .order_by(ordering, JobPosting.id.desc())
         .offset((page - 1) * size)
         .limit(size)
     )
     return list(db.scalars(statement).all())
+
+
+def count_postings(db: Session) -> int:
+    return db.scalar(select(func.count()).select_from(JobPosting)) or 0
 
 
 def get_posting(db: Session, posting_id: int) -> JobPosting | None:

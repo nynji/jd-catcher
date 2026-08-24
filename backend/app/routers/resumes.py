@@ -17,33 +17,47 @@ from app.services.matching_service import (
     get_stored_matches,
     upsert_applications,
 )
-from app.services.resume_extractor import extract_resume_text
+from app.services.resume_extractor import extract_file_text
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
-ALLOWED_CONTENT_TYPES = {"application/pdf", "text/plain"}
+MAX_FILES = 5
 
 
 @router.post("", response_model=ResumeUploadResponse)
 async def upload_resume(
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     title: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(status_code=400, detail="PDF 또는 텍스트 파일만 업로드할 수 있습니다.")
+    if not files:
+        raise HTTPException(status_code=400, detail="파일을 하나 이상 업로드해주세요.")
+    if len(files) > MAX_FILES:
+        raise HTTPException(status_code=400, detail=f"파일은 한 번에 최대 {MAX_FILES}개까지 업로드할 수 있습니다.")
 
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="파일 크기는 10MB를 넘을 수 없습니다.")
+    combined_parts: list[str] = []
+    for file in files:
+        content = await file.read()
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400, detail=f"'{file.filename}' 파일 크기는 10MB를 넘을 수 없습니다."
+            )
+        try:
+            text = await extract_file_text(file.filename or "", content, settings.openai_api_key)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        except RuntimeError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from error
+        except Exception as error:
+            raise HTTPException(
+                status_code=400, detail=f"'{file.filename}' 파일을 처리하지 못했습니다: {error}"
+            ) from error
+        if text.strip():
+            combined_parts.append(f"=== {file.filename} ===\n{text}")
 
-    try:
-        raw_text = extract_resume_text(content, file.content_type)
-    except Exception as error:
-        raise HTTPException(status_code=400, detail=f"파일에서 텍스트를 추출하지 못했습니다: {error}") from error
-
-    if not raw_text.strip():
+    raw_text = "\n\n".join(combined_parts).strip()
+    if not raw_text:
         raise HTTPException(status_code=400, detail="파일에서 텍스트를 추출하지 못했습니다.")
 
     try:
@@ -103,14 +117,18 @@ def get_resume_skills(resume_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{resume_id}/match", response_model=list[MatchResult])
-def match_resume(resume_id: int, db: Session = Depends(get_db)):
+async def match_resume(resume_id: int, db: Session = Depends(get_db)):
     resume = db.get(MemberResume, resume_id)
     if resume is None:
         raise HTTPException(status_code=404, detail="이력서를 찾을 수 없습니다.")
 
     try:
-        matches = compute_matches(db, resume_id)
+        matches = await compute_matches(db, resume_id, settings.openai_api_key)
         role_to_application_id = upsert_applications(db, resume_id, matches)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
     except Exception as error:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"매칭 계산에 실패했습니다: {error}") from error
@@ -126,7 +144,8 @@ def match_resume(resume_id: int, db: Session = Depends(get_db)):
             deadline=match["deadline"],
             linkareer_url=match["linkareer_url"],
             apply_url=match["apply_url"],
-            match_score=int(match["match_score"]) if match["match_score"] is not None else 0,
+            match_score=match["match_score"],
+            reason=match["reason"],
         )
         for match in matches
     ]
@@ -151,6 +170,7 @@ def read_stored_matches(resume_id: int, db: Session = Depends(get_db)):
             linkareer_url=row["linkareer_url"],
             apply_url=row["apply_url"],
             match_score=row["match_score"] or 0,
+            reason=row["match_reason"] or "",
         )
         for row in rows
     ]

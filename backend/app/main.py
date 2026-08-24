@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers.applications import router as applications_router
 from app.routers.matches import router as matches_router
 from app.routers.postings import router as postings_router
 from app.routers.resumes import router as resumes_router
@@ -18,7 +17,6 @@ app.add_middleware(
 
 app.include_router(postings_router)
 app.include_router(resumes_router)
-app.include_router(applications_router)
 app.include_router(matches_router)
 
 

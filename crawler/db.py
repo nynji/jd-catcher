@@ -122,9 +122,9 @@ def save_postings(
 	if not rows:
 		return 0
 
-	# linkareer_url에 UNIQUE 제약이 있어야 기존 공고를 건너뛸 수 있다.
+	# linkareer_url이 이미 있으면 이번 크롤링 결과로 내용을 갱신한다.
 	response = client.table(TABLE_NAME).upsert(
-		rows, on_conflict="linkareer_url", ignore_duplicates=True
+		rows, on_conflict="linkareer_url"
 	).execute()
 	posting_rows = (
 		client.table(TABLE_NAME)

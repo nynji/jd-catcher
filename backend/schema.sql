@@ -24,3 +24,7 @@ create table if not exists public.match_analysis (
 
 create index if not exists idx_match_analysis_lookup
   on public.match_analysis (resume_id, role_id);
+
+-- application.match_score는 이제 LLM 기반 추론 점수를 저장한다 (SQL 완전일치 스코어링 폐기).
+alter table public.application
+  add column if not exists match_reason text;

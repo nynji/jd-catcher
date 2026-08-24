@@ -6,4 +6,7 @@ pydantic-settings
 psycopg2-binary
 python-dotenv
 openai
-pdfplumber
+pypdfium2
+openpyxl
+python-docx
+Pillow

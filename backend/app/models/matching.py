@@ -43,6 +43,7 @@ class Application(Base):
     resume_id: Mapped[int | None] = mapped_column(ForeignKey("member_resume.id"), nullable=True)
     status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     match_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    match_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

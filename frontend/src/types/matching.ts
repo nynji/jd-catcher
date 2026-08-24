@@ -9,9 +9,5 @@ export interface MatchResult {
   linkareer_url: string
   apply_url: string | null
   match_score: number
-}
-
-export interface ExplainResult {
-  application_id: number
-  explanation: string
+  reason: string
 }
