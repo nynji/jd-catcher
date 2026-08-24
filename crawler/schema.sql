@@ -9,7 +9,8 @@ alter table public.job_posting
   add column if not exists apply_url text,
   add column if not exists is_image_based boolean not null default false,
   add column if not exists raw_text text not null default '',
-  add column if not exists collected_at timestamptz not null default now();
+  add column if not exists collected_at timestamptz not null default now(),
+  add column if not exists image_urls jsonb default '[]'::jsonb;
 
 create unique index if not exists job_posting_linkareer_url_key
   on public.job_posting (linkareer_url);

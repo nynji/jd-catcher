@@ -106,11 +106,14 @@ def save_postings(
 		{
 			"linkareer_url": posting.source_url,
 			"company": posting.company,
+			"title": posting.title or None,
 			"job_type": posting.job_type,
 			"industry": posting.industry,
+			"location": posting.location or None,
 			"apply_url": posting.apply_url or None,
 			"is_image_based": posting.is_image_based,
 			"raw_text": posting.raw_text,
+			"image_urls": posting.image_urls,
 			"deadline": _parse_deadline(posting.deadline),
 			"collected_at": datetime.now(timezone.utc).isoformat(),
 		}

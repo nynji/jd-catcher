@@ -7,19 +7,25 @@ from urllib.parse import urljoin
 
 from playwright.async_api import Page
 
-from ai_parser import extract_industry
+from ai_parser import extract_industry, ocr_job_posting_images
+
+_IMAGE_DOMAIN = "media-cdn.linkareer.com"
+_OCR_TEXT_THRESHOLD = 200
 
 
 @dataclass
 class Posting:
 	source_url: str
 	company: str
+	title: str
 	job_type: str
 	industry: str
+	location: str
 	deadline: date | None
 	apply_url: str
 	is_image_based: bool
 	raw_text: str
+	image_urls: list[str] = field(default_factory=list)
 	submission_requirements: list[dict] = field(default_factory=list)
 	questions: list[dict] = field(default_factory=list)
 
@@ -75,6 +81,47 @@ async def _company(page: Page) -> str:
 			if value and value not in blocked and not any(item in value for item in blocked):
 				return value.splitlines()[0].strip()
 	return ""
+
+
+def _is_deadline_badge(line: str) -> bool:
+	return bool(re.fullmatch(r"D-\d+", line)) or "마감" in line or "상시" in line
+
+
+def _title_from_raw_text(raw_text: str) -> str:
+	"""첫 줄은 D-day 배지(D-6, 오늘마감, 상시모집 등)이고 그 다음 줄이 공고 제목이다."""
+	lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+	if not lines:
+		return ""
+	if _is_deadline_badge(lines[0]) and len(lines) > 1:
+		return lines[1]
+	return lines[0]
+
+
+async def _title(page: Page, raw_text: str) -> str:
+	page_title = (await page.title()).strip()
+	page_title = re.sub(r"\s*[|\-–]\s*(공모전 대외활동|링커리어).*$", "", page_title).strip()
+	if page_title:
+		return page_title
+	return _title_from_raw_text(raw_text)
+
+
+async def _detail_content(detail: Page) -> tuple[str, list[str]]:
+	"""'상세내용' 탭 영역만 잡는다. 채팅방/스터디모집/합격후기/추천공고는 형제 섹션이라 자동 제외된다."""
+	container = detail.locator("article#DETAIL .responsive-element").first
+	if not await container.count():
+		heading = detail.locator("h2").filter(has_text=re.compile(r"^상세내용$"))
+		if await heading.count():
+			container = heading.first.locator("xpath=following-sibling::*[1]")
+	if not await container.count():
+		return "", []
+
+	text = (await container.inner_text()).strip()
+	image_urls: list[str] = []
+	for img in await container.locator("img").all():
+		src = await img.get_attribute("src")
+		if src and _IMAGE_DOMAIN in src and src not in image_urls:
+			image_urls.append(src)
+	return text, image_urls
 
 
 async def _apply_url(detail: Page) -> str:
@@ -166,28 +213,36 @@ async def crawl(
 				company = await _company(detail)
 				job_type = await _label_value(detail, ["모집직무", "직무"])
 				industry = await _label_value(detail, ["상세업종", "업종"])
+				location = await _label_value(detail, ["근무지역", "근무 지역", "지역"])
 				deadline_text = await _label_value(detail, ["마감일", "접수기간"])
-				raw_text = await _text(
-					detail,
-					["main", "article", "[class*='content']", "[class*='description']"],
-				)
+				raw_text, image_urls = await _detail_content(detail)
+				is_image_based = len(raw_text) < _OCR_TEXT_THRESHOLD or bool(image_urls)
+
+				if is_image_based and len(raw_text) < _OCR_TEXT_THRESHOLD and image_urls:
+					ocr_text = await ocr_job_posting_images(image_urls, openai_api_key)
+					if ocr_text:
+						raw_text = ocr_text
+
 				if not industry:
 					industry = await extract_industry(raw_text, openai_api_key)
-				if raw_text:
-					postings.append(
-						Posting(
-							source_url=detail_url,
-							company=company,
-							job_type=job_type,
-							industry=industry,
-							deadline=_parse_date(deadline_text),
-							apply_url=await _apply_url(detail),
-							is_image_based=await detail.locator("main img, article img").count() > 0,
-							raw_text=raw_text,
-							submission_requirements=await _submission_requirements(detail),
-							questions=await _questions(detail),
-						)
+
+				postings.append(
+					Posting(
+						source_url=detail_url,
+						company=company,
+						title=await _title(detail, raw_text),
+						job_type=job_type,
+						industry=industry,
+						location=location,
+						deadline=_parse_date(deadline_text),
+						apply_url=await _apply_url(detail),
+						is_image_based=is_image_based,
+						raw_text=raw_text,
+						image_urls=image_urls,
+						submission_requirements=await _submission_requirements(detail),
+						questions=await _questions(detail),
 					)
+				)
 			finally:
 				await detail.close()
 

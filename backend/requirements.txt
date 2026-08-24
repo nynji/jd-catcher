@@ -1,7 +1,9 @@
 fastapi
 uvicorn[standard]
+python-multipart
 sqlalchemy
 pydantic-settings
 psycopg2-binary
 python-dotenv
 openai
+pdfplumber
