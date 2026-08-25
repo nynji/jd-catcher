@@ -1,4 +1,4 @@
-import type { MemberSkill, ResumeSummary, ResumeUploadResult } from '../types/resume'
+import type { MemberSkill, ResumeUploadResult } from '../types/resume'
 import type { MatchResult } from '../types/matching'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -19,10 +19,6 @@ export function uploadResume(files: File[], title: string): Promise<ResumeUpload
   return fetch(`${API_BASE_URL}/resumes`, { method: 'POST', body: formData }).then((response) =>
     readJson<ResumeUploadResult>(response),
   )
-}
-
-export function fetchResumes(): Promise<ResumeSummary[]> {
-  return fetch(`${API_BASE_URL}/resumes`).then((response) => readJson<ResumeSummary[]>(response))
 }
 
 export function fetchResumeSkills(resumeId: number): Promise<MemberSkill[]> {

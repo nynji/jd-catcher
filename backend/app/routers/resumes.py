@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -9,7 +8,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.member import MemberResume, MemberSkill
 from app.schemas.matching import MatchResult
-from app.schemas.resume import MemberSkillResponse, ResumeSummary, ResumeUploadResponse
+from app.schemas.resume import MemberSkillResponse, ResumeUploadResponse
 from app.services.ai_extractor import extract_skills_from_resume
 from app.services.matching_service import (
     MEMBER_ID,
@@ -96,16 +95,6 @@ async def upload_resume(
         title=resume.title,
         skills=[MemberSkillResponse.model_validate(s) for s in resume.skills],
     )
-
-
-@router.get("", response_model=list[ResumeSummary])
-def list_resumes(db: Session = Depends(get_db)):
-    statement = (
-        select(MemberResume)
-        .where(MemberResume.member_id == MEMBER_ID)
-        .order_by(MemberResume.created_at.desc())
-    )
-    return list(db.scalars(statement).all())
 
 
 @router.get("/{resume_id}/skills", response_model=list[MemberSkillResponse])

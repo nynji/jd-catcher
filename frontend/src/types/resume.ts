@@ -5,12 +5,6 @@ export interface MemberSkill {
   evidence: string | null
 }
 
-export interface ResumeSummary {
-  id: number
-  title: string | null
-  created_at: string | null
-}
-
 export interface ResumeUploadResult {
   id: number
   title: string | null

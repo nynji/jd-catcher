@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { analyzeMatch } from '../api/matches'
 import { fetchStoredMatches } from '../api/resumes'
 import { logEvent } from '../utils/logEvent'
+import { isCurrentResume } from '../utils/resumeSession'
 import type { MatchAnalysis } from '../types/analysis'
 import type { MatchResult } from '../types/matching'
 
@@ -31,6 +32,11 @@ export default function MatchAnalysisPage() {
 
   useEffect(() => {
     if (!resumeId || !roleId) return
+    if (!isCurrentResume(Number(resumeId))) {
+      setError('이 세션에 등록된 이력서가 아닙니다. 이력서를 다시 등록해주세요.')
+      setStatus('error')
+      return
+    }
     let active = true
     setStatus('loading')
     setError(null)
@@ -80,15 +86,21 @@ export default function MatchAnalysisPage() {
     )
   }
 
+  const isSessionMismatch = Boolean(resumeId) && !isCurrentResume(Number(resumeId))
+
   if (status === 'error' || !analysis) {
     return (
       <main className="page-shell">
         <div className="state-panel full-page error-panel">
           <strong>분석할 수 없습니다.</strong>
           <span>{error}</span>
-          <button className="secondary-button" disabled={retrying} onClick={() => void handleRetry()}>
-            {retrying ? '재시도 중...' : '다시 시도'}
-          </button>
+          {isSessionMismatch ? (
+            <Link to="/resume">이력서 등록하러 가기</Link>
+          ) : (
+            <button className="secondary-button" disabled={retrying} onClick={() => void handleRetry()}>
+              {retrying ? '재시도 중...' : '다시 시도'}
+            </button>
+          )}
         </div>
       </main>
     )

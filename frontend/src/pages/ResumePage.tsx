@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { fetchResumeSkills, fetchResumes, startMatching, uploadResume } from '../api/resumes'
-import type { MemberSkill, ResumeSummary } from '../types/resume'
+import { fetchResumeSkills, startMatching, uploadResume } from '../api/resumes'
+import { getCurrentResumeId, setCurrentResumeId } from '../utils/resumeSession'
+import type { MemberSkill } from '../types/resume'
 
-type Status = 'idle' | 'uploading' | 'ready' | 'matching' | 'error'
+type Status = 'idle' | 'checking' | 'uploading' | 'ready' | 'matching' | 'error'
 
 function Spinner() {
   return <span className="spinner" aria-label="처리 중" />
@@ -20,19 +21,28 @@ function hasAcceptedExtension(filename: string) {
 export default function ResumePage() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
-  const [status, setStatus] = useState<Status>('idle')
+  const [status, setStatus] = useState<Status>('checking')
   const [error, setError] = useState<string | null>(null)
   const [resumeId, setResumeId] = useState<number | null>(null)
   const [skills, setSkills] = useState<MemberSkill[]>([])
-  const [resumes, setResumes] = useState<ResumeSummary[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [uploadingNames, setUploadingNames] = useState<string[]>([])
+  const [pastedText, setPastedText] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    fetchResumes()
-      .then(setResumes)
-      .catch(() => undefined)
+    const current = getCurrentResumeId()
+    if (current === null) {
+      setStatus('idle')
+      return
+    }
+    fetchResumeSkills(current)
+      .then((existingSkills) => {
+        setResumeId(current)
+        setSkills(existingSkills)
+        setStatus('ready')
+      })
+      .catch(() => setStatus('idle'))
   }, [])
 
   async function handleFiles(files: File[]) {
@@ -47,27 +57,13 @@ export default function ResumePage() {
     setError(null)
     try {
       const result = await uploadResume(files, title)
+      setCurrentResumeId(result.id)
       setResumeId(result.id)
       setSkills(result.skills)
       setStatus('ready')
-      setResumes((prev) => [{ id: result.id, title: result.title, created_at: null }, ...prev])
     } catch (reason) {
       setStatus('error')
       setError(reason instanceof Error ? reason.message : '업로드에 실패했습니다.')
-    }
-  }
-
-  async function handleSelectExisting(id: number) {
-    setStatus('uploading')
-    setError(null)
-    try {
-      const existingSkills = await fetchResumeSkills(id)
-      setResumeId(id)
-      setSkills(existingSkills)
-      setStatus('ready')
-    } catch (reason) {
-      setStatus('error')
-      setError(reason instanceof Error ? reason.message : '역량을 불러오지 못했습니다.')
     }
   }
 
@@ -91,6 +87,14 @@ export default function ResumePage() {
     if (files.length > 0) void handleFiles(files)
   }
 
+  async function handlePastedTextSubmit() {
+    const trimmed = pastedText.trim()
+    if (!trimmed) return
+    const file = new File([trimmed], '붙여넣은 텍스트.txt', { type: 'text/plain' })
+    await handleFiles([file])
+    setPastedText('')
+  }
+
   return (
     <main className="page-shell">
       <Link className="back-link" to="/">← 공고 목록</Link>
@@ -98,25 +102,12 @@ export default function ResumePage() {
         <div>
           <p className="eyebrow">RESUME</p>
           <h1>이력서를 올리면<br /><em>AI가 역량을 정리해드려요.</em></h1>
-          <p className="header-copy">PDF·워드·엑셀·텍스트 파일을 올리면(여러 개 동시 가능) 역량을 추출하고, 등록된 공고와 매칭해드립니다.</p>
+          <p className="header-copy">PDF·워드·엑셀·텍스트 파일을 올리거나(여러 개 동시 가능) 텍스트를 직접 붙여넣으면, 역량을 추출하고 등록된 공고와 매칭해드립니다.</p>
         </div>
       </header>
 
-      {resumes.length > 0 && (
-        <section className="toolbar" aria-label="저장된 이력서">
-          <span className="section-label">MY RESUMES</span>
-          <div className="sort-toggle">
-            {resumes.map((resume) => (
-              <button
-                key={resume.id}
-                className={resumeId === resume.id ? 'active' : ''}
-                onClick={() => void handleSelectExisting(resume.id)}
-              >
-                {resume.title || `이력서 #${resume.id}`}
-              </button>
-            ))}
-          </div>
-        </section>
+      {status === 'ready' && (
+        <p className="session-notice">현재 이 브라우저 세션에 등록된 이력서를 사용 중입니다. 아래에서 새로 올리거나 붙여넣으면 교체됩니다.</p>
       )}
 
       <input
@@ -159,6 +150,27 @@ export default function ResumePage() {
             <span className="muted">이력서 · 포트폴리오 (PDF/TXT/MD/XLSX/DOCX, 파일당 최대 10MB, 최대 5개)</span>
           </>
         )}
+      </section>
+
+      <div className="or-divider"><span>또는</span></div>
+
+      <section className="paste-text-block">
+        <textarea
+          className="paste-textarea"
+          placeholder="이력서·포트폴리오 내용을 여기에 텍스트로 바로 붙여넣으세요."
+          value={pastedText}
+          onChange={(event) => setPastedText(event.target.value)}
+          rows={8}
+          disabled={status === 'uploading'}
+        />
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={!pastedText.trim() || status === 'uploading'}
+          onClick={() => void handlePastedTextSubmit()}
+        >
+          텍스트로 등록
+        </button>
       </section>
 
       {status === 'error' && (

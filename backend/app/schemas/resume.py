@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict
 
 
@@ -10,14 +8,6 @@ class MemberSkillResponse(BaseModel):
     skill_name: str
     competency: str
     evidence: str | None
-
-
-class ResumeSummary(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    title: str | None
-    created_at: datetime | None
 
 
 class ResumeUploadResponse(BaseModel):

@@ -7,7 +7,7 @@
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from openai import AsyncOpenAI
 from sqlalchemy import select, text
@@ -28,6 +28,14 @@ _SYSTEM_PROMPT = (
     "경험/역량이면 유사하다고 보고 점수를 매기세요 "
     "(예: '엑셀'과 'Excel', '데이터 분석 경험'과 'SQL 기반 분석'은 서로 관련 있다고 판단). "
     "근거 없이 점수를 후하게 주지는 마세요. 반드시 JSON으로만 답하세요."
+)
+
+_REASON_INSTRUCTION = (
+    "reason 값은 이력서에 있는 구체적인 경험/역량 하나와, 공고가 요구하는 구체적인 역량/업무 "
+    "하나를 각각 콕 집어서 그 둘이 왜 연결되는지 설명하는 한국어 1문장으로 쓸 것. "
+    "뭉뚱그리지 말고 이력서 원문에 나온 표현을 실제로 인용하듯 구체적으로 쓸 것. "
+    "예: '이력서의 코호트 리텐션 분석 경험이 공고가 요구하는 데이터 기반 의사결정 역량과 잘 맞습니다.' "
+    "문장은 반드시 '~합니다/~입니다'체로 끝낼 것 (예: '~함', '~보임' 같은 명사형 종결 금지)."
 )
 
 _STORED_MATCH_SQL = text(
@@ -84,7 +92,8 @@ async def _score_batch(
         f"지원자 보유 역량: {member_skills_text}\n\n"
         f"평가할 공고 직무 목록:\n{role_blocks}\n\n"
         '각 직무에 대해 JSON 형식 {"matches": [{"role_id": 정수, "match_score": 0~100 사이 정수, '
-        '"reason": "왜 이 점수인지 1문장 한국어 설명"}]}로만 답하라. '
+        '"reason": "..."}]}로만 답하라. '
+        f"{_REASON_INSTRUCTION} "
         "모든 role_id를 빠짐없이 포함하라."
     )
     try:
@@ -125,7 +134,13 @@ async def compute_matches(db: Session, resume_id: int, api_key: str) -> list[dic
         selectinload(PostingRole.posting), selectinload(PostingRole.skills)
     )
     roles = list(db.scalars(statement).all())
-    roles = [role for role in roles if role.posting is not None]
+    today = date.today()
+    roles = [
+        role
+        for role in roles
+        if role.posting is not None
+        and (role.posting.deadline is None or role.posting.deadline >= today)
+    ]
     if not roles:
         return []
 

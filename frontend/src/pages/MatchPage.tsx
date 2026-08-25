@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchStoredMatches } from '../api/resumes'
 import { analyzeMatch } from '../api/matches'
+import { isCurrentResume } from '../utils/resumeSession'
 import type { MatchResult } from '../types/matching'
 
 function Spinner() {
@@ -32,6 +33,11 @@ export default function MatchPage() {
 
   useEffect(() => {
     if (!resumeId) return
+    if (!isCurrentResume(Number(resumeId))) {
+      setError('이 세션에 등록된 이력서가 아닙니다. 이력서를 다시 등록해주세요.')
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     fetchStoredMatches(Number(resumeId))
@@ -71,7 +77,13 @@ export default function MatchPage() {
       </header>
 
       {loading && <div className="state-panel"><Spinner /><span>매칭 결과를 불러오는 중입니다</span></div>}
-      {error && <div className="state-panel error-panel"><strong>불러올 수 없습니다.</strong><span>{error}</span></div>}
+      {error && (
+        <div className="state-panel error-panel">
+          <strong>불러올 수 없습니다.</strong>
+          <span>{error}</span>
+          <Link to="/resume">이력서 등록하러 가기</Link>
+        </div>
+      )}
       {analyzeError && (
         <div className="state-panel error-panel">
           <strong>상세 분석에 실패했습니다.</strong>
