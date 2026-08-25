@@ -110,7 +110,7 @@ export default function MatchAnalysisPage() {
   const tier = scoreTier(score)
 
   return (
-    <main className="page-shell">
+    <main className="analysis-shell">
       <Link className="back-link" to={resumeId ? `/match/${resumeId}` : '/resume'}>← 매칭 목록</Link>
 
       <section className="analysis-hero">
@@ -118,6 +118,7 @@ export default function MatchAnalysisPage() {
           <p className="eyebrow">{posting?.company || '기업 미상'}</p>
           <h1>{posting?.title || '제목 없는 공고'}</h1>
           <p className="header-copy">{(posting?.role_name ?? '').split('\n')[0] || '직무 미기재'}</p>
+          {analysis.score_reason && <p className="hero-summary">{analysis.score_reason}</p>}
         </div>
         <div className={`score-gauge tier-${tier}`} style={{ '--pct': score } as CSSProperties}>
           <div className="score-gauge-inner">
@@ -126,71 +127,76 @@ export default function MatchAnalysisPage() {
           </div>
         </div>
       </section>
-      {analysis.score_reason && <p className="score-reason">{analysis.score_reason}</p>}
 
-      {analysis.matched_points.length > 0 && (
-        <section className="content-section">
-          <div className="section-heading"><h2>매칭 포인트</h2></div>
-          <div className="point-grid">
-            {analysis.matched_points.map((point, index) => (
-              <div className="point-card point-matched" key={index}>
-                <span className="point-label">내 역량</span>
-                <p className="point-main">{point.applicant_capability}</p>
-                <div className="point-arrow">↓ 매칭</div>
-                <span className="point-label">공고 요구사항</span>
-                <p className="point-main">{point.jd_requirement}</p>
-                <p className="point-explanation">{point.explanation}</p>
-                <span className={`strength-badge strength-${point.strength}`}>
-                  강도: {STRENGTH_LABEL[point.strength] ?? point.strength}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {analysis.gap_points.length > 0 && (
-        <section className="content-section">
-          <div className="section-heading"><h2>부족한 부분</h2></div>
-          <div className="point-grid">
-            {analysis.gap_points.map((point, index) => (
-              <div className="point-card point-gap" key={index}>
-                <span className="point-label">요구사항</span>
-                <p className="point-main">{point.jd_requirement}</p>
-                <span className="point-label">현재 수준</span>
-                <p className="point-main muted">{point.current_state}</p>
-                <p className="point-explanation">{point.suggestion}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {analysis.summary && (
-        <section className="content-section">
-          <div className="section-heading"><h2>종합 평가</h2></div>
-          <p className="summary-text">{analysis.summary}</p>
-        </section>
-      )}
-
-      {analysis.recommended_emphasis.length > 0 && (
-        <section className="content-section">
-          <div className="section-heading"><h2>강조 포인트</h2></div>
-          <ul className="emphasis-list">
-            {analysis.recommended_emphasis.map((item, index) => <li key={index}>{item}</li>)}
-          </ul>
-        </section>
-      )}
-
-      <div className="analysis-actions">
-        <button className="secondary-button" type="button" disabled title="준비 중인 기능입니다">
-          자소서 초안 생성
-        </button>
-        {posting?.apply_url && (
-          <a className="primary-button" href={posting.apply_url} target="_blank" rel="noreferrer">
-            홈페이지 지원 ↗
-          </a>
+      <div className="analysis-top-row">
+        {analysis.summary && (
+          <section>
+            <p className="point-section-title">종합 평가</p>
+            <p className="summary-text">{analysis.summary}</p>
+          </section>
         )}
+
+        {analysis.recommended_emphasis.length > 0 && (
+          <section>
+            <p className="point-section-title">강조 포인트</p>
+            <ul className="emphasis-list">
+              {analysis.recommended_emphasis.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+          </section>
+        )}
+      </div>
+
+      <div className="analysis-board">
+        {analysis.matched_points.length > 0 && (
+          <section>
+            <p className="point-section-title">매칭 포인트</p>
+            <div className="point-list">
+              {analysis.matched_points.map((point, index) => (
+                <div className="point-card point-matched" key={index}>
+                  <div className="point-row">
+                    <span className="point-label">내 역량</span>
+                    <span className={`strength-badge strength-${point.strength}`}>
+                      강도: {STRENGTH_LABEL[point.strength] ?? point.strength}
+                    </span>
+                  </div>
+                  <p className="point-main">{point.applicant_capability}</p>
+                  <div className="point-arrow">↓ 매칭</div>
+                  <span className="point-label">공고 요구사항</span>
+                  <p className="point-main">{point.jd_requirement}</p>
+                  <p className="point-explanation">{point.explanation}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {analysis.gap_points.length > 0 && (
+          <section>
+            <p className="point-section-title">부족한 부분</p>
+            <div className="point-list">
+              {analysis.gap_points.map((point, index) => (
+                <div className="point-card point-gap" key={index}>
+                  <span className="point-label">요구사항</span>
+                  <p className="point-main">{point.jd_requirement}</p>
+                  <span className="point-label">현재 수준</span>
+                  <p className="point-main muted">{point.current_state}</p>
+                  <p className="point-explanation">{point.suggestion}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div className="analysis-actions">
+          <button className="secondary-button" type="button" disabled title="준비 중인 기능입니다">
+            자소서 초안 생성
+          </button>
+          {posting?.apply_url && (
+            <a className="primary-button" href={posting.apply_url} target="_blank" rel="noreferrer">
+              홈페이지 지원 ↗
+            </a>
+          )}
+        </div>
       </div>
     </main>
   )

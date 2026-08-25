@@ -46,7 +46,7 @@ button, a, input, textarea { font: inherit; }
 button { cursor: pointer; }
 h1, h2, h3 { letter-spacing: 0; font-weight: 700; }
 
-.page-shell, .detail-shell { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
+.page-shell, .detail-shell, .analysis-shell { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
 .page-shell { padding: 0 0 100px; }
 
 /* 히어로: 밝은 화이트 밴드 + 헤어라인으로만 구분 */
@@ -170,39 +170,52 @@ h1, h2, h3 { letter-spacing: 0; font-weight: 700; }
 .match-card-actions { display: flex; gap: 8px; margin-top: 14px; }
 .match-card-actions .explain-button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 
-.analysis-hero { display: flex; align-items: center; justify-content: space-between; gap: 40px; padding: 56px; margin: 0 calc(50% - 50vw) 32px; background: var(--white); border-bottom: 1px solid var(--line); }
+/* 상세 분석 페이지: 다른 페이지보다 넓은 캔버스를 써서 2단 대시보드로 배치.
+   내부 컬럼 스크롤(clip)은 쓰지 않고, 페이지 전체가 필요한 만큼만 자연스럽게
+   스크롤되도록 한다 — 컨텐츠가 잘리는 일은 없어야 한다. */
+.analysis-shell { width: min(1520px, calc(100% - 56px)); margin: 0 auto; padding: 32px 0 100px; }
+.analysis-shell .back-link { margin-bottom: 28px; }
+
+.analysis-hero { display: flex; align-items: center; justify-content: space-between; gap: 32px; padding: 32px 40px; margin: 0 0 24px; background: var(--white); border: 1px solid var(--line); }
 .analysis-hero > div:first-child { flex: 1; min-width: 0; }
 .analysis-hero > div > .eyebrow { color: var(--green-ink); }
-.analysis-hero .header-copy, .analysis-hero p { color: var(--muted); }
-.analysis-hero h1 { max-width: 100%; margin: 10px 0 6px; font-size: clamp(30px, 4vw, 44px); font-weight: 700; color: var(--ink); }
-.score-gauge { --pct: 0; --gauge-color: var(--green); flex-shrink: 0; width: 168px; height: 168px; border-radius: 50%; padding: 10px; background: conic-gradient(var(--gauge-color) calc(var(--pct) * 1%), var(--line) 0); }
+.analysis-hero .header-copy, .analysis-hero p { color: var(--muted); margin: 0; }
+.analysis-hero h1 { max-width: 100%; margin: 8px 0 6px; font-size: clamp(26px, 2.8vw, 36px); line-height: 1.3; font-weight: 700; color: var(--ink); }
+.score-gauge { --pct: 0; --gauge-color: var(--green); flex-shrink: 0; width: 128px; height: 128px; border-radius: 50%; padding: 9px; background: conic-gradient(var(--gauge-color) calc(var(--pct) * 1%), var(--line) 0); }
 .score-gauge.tier-high { --gauge-color: var(--green); }
 .score-gauge.tier-mid { --gauge-color: var(--ink); }
 .score-gauge.tier-low { --gauge-color: var(--muted-faint); }
 .score-gauge-inner { width: 100%; height: 100%; border-radius: 50%; background: var(--white); display: flex; align-items: baseline; justify-content: center; gap: 2px; }
-.score-gauge-inner strong { font-family: var(--font-mono); font-size: 44px; font-weight: 700; color: var(--ink); }
-.score-gauge-inner span { font-size: 18px; color: var(--muted); }
-.score-reason { max-width: 720px; margin: 0 0 40px; color: var(--muted); font-size: 17px; line-height: 1.7; }
+.score-gauge-inner strong { font-family: var(--font-mono); font-size: 36px; font-weight: 700; color: var(--ink); }
+.score-gauge-inner span { font-size: 16px; color: var(--muted); }
+.hero-summary { max-width: none; margin: 14px 0 0; color: var(--ink); font-size: 18px; font-weight: 600; line-height: 1.6; }
 
-.point-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.point-card { padding: 22px; border: 1px solid var(--line); border-left: 3px solid var(--ink); background: var(--white); }
+.analysis-top-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: start; margin-bottom: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--line); }
+.analysis-board { display: grid; grid-template-columns: 1fr 1fr auto; gap: 32px; align-items: start; }
+.analysis-col { display: flex; flex-direction: column; gap: 24px; }
+
+.point-section-title { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 17px; font-weight: 700; color: var(--ink); }
+.point-list { display: flex; flex-direction: column; gap: 10px; }
+.point-card { padding: 18px 22px; border: 1px solid var(--line); border-left: 3px solid var(--ink); background: var(--white); }
 .point-matched { border-left: 3px solid var(--green); }
 .point-gap { border-left: 3px solid var(--muted-faint); }
-.point-label { display: block; color: var(--muted); font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
-.point-main { margin: 6px 0 12px; font-size: 17px; line-height: 1.6; }
-.point-arrow { margin: -6px 0 10px; color: var(--ink); font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
-.point-explanation { margin: 0 0 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 16px; line-height: 1.7; }
-.strength-badge { display: inline-block; border-radius: 0; padding: 5px 12px; font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
+.point-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.point-label { display: block; color: var(--muted); font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; flex-shrink: 0; }
+.point-main { margin: 4px 0 10px; font-size: 17px; line-height: 1.55; }
+.point-arrow { margin: 0 0 6px; color: var(--muted); font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+.point-explanation { margin: 8px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; line-height: 1.6; }
+.strength-badge { display: inline-block; flex-shrink: 0; border-radius: 0; padding: 4px 11px; font-size: 12px; font-weight: 700; font-family: var(--font-mono); margin-left: auto; }
 .strength-badge.strength-high { background: var(--green); color: var(--ink); }
 .strength-badge.strength-medium { background: var(--white); border: 1px solid var(--ink); color: var(--ink); }
 .strength-badge.strength-low { background: var(--canvas); border: 1px solid var(--line); color: var(--muted); }
 
-.summary-text { max-width: 760px; margin: 0; color: var(--ink); font-size: 18px; line-height: 1.8; }
+.summary-text { max-width: none; margin: 0; color: var(--ink); font-size: 17px; line-height: 1.7; }
 .emphasis-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
-.emphasis-list li { position: relative; padding-left: 28px; color: var(--ink); font-size: 17px; line-height: 1.6; }
+.emphasis-list li { position: relative; padding-left: 26px; color: var(--ink); font-size: 16px; line-height: 1.55; }
 .emphasis-list li::before { content: '✓'; position: absolute; left: 0; top: 0; color: var(--green-ink); font-weight: 700; }
-.analysis-actions { display: flex; gap: 10px; margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--line); }
+.analysis-actions { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 190px; flex-shrink: 0; }
 .analysis-actions .secondary-button:disabled { opacity: .5; cursor: not-allowed; }
+.analysis-actions .primary-button, .analysis-actions .secondary-button { height: 46px; font-size: 16px; padding: 8px 20px; }
 
 @media (max-width: 760px) {
   .page-shell, .detail-shell { width: min(100% - 32px, 600px); }
@@ -211,11 +224,12 @@ h1, h2, h3 { letter-spacing: 0; font-weight: 700; }
   .header-side, .header-stat { align-items: start; }
   .skill-list { grid-template-columns: 1fr; }
   .posting-grid { grid-template-columns: 1fr; }
-  .analysis-hero { flex-direction: column; align-items: start; gap: 24px; padding: 40px 24px; }
-  .score-gauge { width: 128px; height: 128px; }
-  .score-gauge-inner strong { font-size: 34px; }
-  .point-grid { grid-template-columns: 1fr; }
-  .analysis-actions { flex-direction: column; align-items: stretch; }
+  .analysis-shell { padding: 20px 0 60px; }
+  .analysis-hero { flex-direction: column; align-items: start; gap: 20px; padding: 28px 24px; }
+  .score-gauge { width: 96px; height: 96px; }
+  .analysis-top-row { grid-template-columns: 1fr; gap: 32px; margin-bottom: 32px; padding-bottom: 32px; }
+  .analysis-board { grid-template-columns: 1fr; gap: 32px; }
+  .analysis-actions { width: auto; margin-top: 8px; }
   .posting-card { min-height: 230px; }
   .toolbar { align-items: start; flex-direction: column; gap: 14px; }
   .detail-shell { padding-top: 24px; }
