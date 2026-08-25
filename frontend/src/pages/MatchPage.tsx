@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchStoredMatches } from '../api/resumes'
 import { analyzeMatch } from '../api/matches'
+import { useEngagement } from '../hooks/usePageView'
+import { logEvent } from '../utils/logEvent'
 import { isCurrentResume } from '../utils/resumeSession'
 import type { MatchResult } from '../types/matching'
 
@@ -30,6 +32,9 @@ export default function MatchPage() {
   const [error, setError] = useState<string | null>(null)
   const [analyzingRoleId, setAnalyzingRoleId] = useState<number | null>(null)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+  const [viewEventId, setViewEventId] = useState<number | null>(null)
+
+  useEngagement(viewEventId)
 
   useEffect(() => {
     if (!resumeId) return
@@ -41,7 +46,12 @@ export default function MatchPage() {
     setLoading(true)
     setError(null)
     fetchStoredMatches(Number(resumeId))
-      .then(setMatches)
+      .then((data) => {
+        setMatches(data)
+        logEvent('match_list_view', { match_count: data.length }, { resumeId: Number(resumeId) }).then(
+          setViewEventId,
+        )
+      })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : '매칭 결과를 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
   }, [resumeId])
@@ -50,6 +60,7 @@ export default function MatchPage() {
     if (!resumeId) return
     setAnalyzingRoleId(roleId)
     setAnalyzeError(null)
+    void logEvent('match_analyze_click', {}, { resumeId: Number(resumeId), roleId })
     try {
       await analyzeMatch(Number(resumeId), roleId)
       navigate(`/analysis/${resumeId}/${roleId}`)

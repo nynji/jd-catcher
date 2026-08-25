@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { analyzeMatch } from '../api/matches'
 import { fetchStoredMatches } from '../api/resumes'
+import { useEngagement } from '../hooks/usePageView'
 import { logEvent } from '../utils/logEvent'
 import { isCurrentResume } from '../utils/resumeSession'
 import type { MatchAnalysis } from '../types/analysis'
@@ -29,6 +30,9 @@ export default function MatchAnalysisPage() {
   const [status, setStatus] = useState<Status>('loading')
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
+  const [viewEventId, setViewEventId] = useState<number | null>(null)
+
+  useEngagement(viewEventId)
 
   useEffect(() => {
     if (!resumeId || !roleId) return
@@ -46,10 +50,11 @@ export default function MatchAnalysisPage() {
         setPosting(matches.find((match) => match.role_id === Number(roleId)) ?? null)
         setAnalysis(analysisResult)
         setStatus('done')
-        logEvent('match_analysis_view', {
-          role_id: Number(roleId),
-          ai_match_score: analysisResult.ai_match_score,
-        })
+        logEvent(
+          'match_analysis_view',
+          { ai_match_score: analysisResult.ai_match_score },
+          { resumeId: Number(resumeId), roleId: Number(roleId) },
+        ).then(setViewEventId)
       })
       .catch((reason: unknown) => {
         if (!active) return
@@ -192,7 +197,19 @@ export default function MatchAnalysisPage() {
             자소서 초안 생성
           </button>
           {posting?.apply_url && (
-            <a className="primary-button" href={posting.apply_url} target="_blank" rel="noreferrer">
+            <a
+              className="primary-button"
+              href={posting.apply_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() =>
+                void logEvent(
+                  'apply_url_click',
+                  { apply_url: posting.apply_url },
+                  { postingId: posting.posting_id, resumeId: Number(resumeId), roleId: Number(roleId) },
+                )
+              }
+            >
               홈페이지 지원 ↗
             </a>
           )}

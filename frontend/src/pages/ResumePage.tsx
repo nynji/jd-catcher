@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { fetchResumeSkills, startMatching, uploadResume } from '../api/resumes'
+import { usePageView } from '../hooks/usePageView'
+import { logEvent } from '../utils/logEvent'
 import { getCurrentResumeId, setCurrentResumeId } from '../utils/resumeSession'
 import type { MemberSkill } from '../types/resume'
 
@@ -30,6 +32,8 @@ export default function ResumePage() {
   const [pastedText, setPastedText] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  usePageView('resume_page_view', { has_existing_resume: getCurrentResumeId() !== null })
+
   useEffect(() => {
     const current = getCurrentResumeId()
     if (current === null) {
@@ -55,15 +59,20 @@ export default function ResumePage() {
     setUploadingNames(files.map((file) => file.name))
     setStatus('uploading')
     setError(null)
+    const fileTypes = [...new Set(files.map((file) => file.name.split('.').pop() ?? ''))]
+    void logEvent('resume_upload_submit', { file_count: files.length, file_types: fileTypes })
     try {
       const result = await uploadResume(files, title)
       setCurrentResumeId(result.id)
       setResumeId(result.id)
       setSkills(result.skills)
       setStatus('ready')
+      void logEvent('resume_upload_success', { file_count: files.length, file_types: fileTypes }, { resumeId: result.id })
     } catch (reason) {
       setStatus('error')
-      setError(reason instanceof Error ? reason.message : '업로드에 실패했습니다.')
+      const message = reason instanceof Error ? reason.message : '업로드에 실패했습니다.'
+      setError(message)
+      void logEvent('resume_upload_error', { file_count: files.length, file_types: fileTypes, message })
     }
   }
 
@@ -71,8 +80,10 @@ export default function ResumePage() {
     if (!resumeId) return
     setStatus('matching')
     setError(null)
+    void logEvent('match_start_click', {}, { resumeId })
     try {
-      await startMatching(resumeId)
+      const matches = await startMatching(resumeId)
+      void logEvent('match_start_success', { match_count: matches.length }, { resumeId })
       navigate(`/match/${resumeId}`)
     } catch (reason) {
       setStatus('error')

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { logEvent } from '../utils/logEvent'
 import type { PostingSummary } from '../types/posting'
 
 interface PostingCardProps {
@@ -15,7 +16,11 @@ function formatDeadline(deadline: string | null) {
 
 export default function PostingCard({ posting }: PostingCardProps) {
   return (
-    <Link className="posting-card" to={`/postings/${posting.id}`}>
+    <Link
+      className="posting-card"
+      to={`/postings/${posting.id}`}
+      onClick={() => void logEvent('posting_card_click', {}, { postingId: posting.id })}
+    >
       <div className="card-topline">
         <span className="company-name">{posting.company || '기업 미상'}</span>
         {posting.has_cover_letter && <span className="status-badge">자소서</span>}

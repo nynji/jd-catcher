@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PostingCard from '../components/PostingCard'
 import { fetchPostingCount, fetchPostings } from '../api/postings'
+import { usePageView } from '../hooks/usePageView'
+import { logEvent } from '../utils/logEvent'
 import type { PostingSort, PostingSummary } from '../types/posting'
 
 const PAGE_SIZE = 50
@@ -31,6 +33,8 @@ export default function PostingListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  usePageView('posting_list_view', { sort, page })
+
   useEffect(() => {
     fetchPostingCount()
       .then(setTotal)
@@ -59,12 +63,14 @@ export default function PostingListPage() {
   function handleSortChange(nextSort: PostingSort) {
     setSort(nextSort)
     setPage(1)
+    void logEvent('posting_sort_change', { sort: nextSort })
   }
 
   function handlePageChange(nextPage: number) {
     if (nextPage === page) return
     setPage(nextPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    void logEvent('posting_page_change', { page: nextPage })
   }
 
   const totalPages = total != null ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : null

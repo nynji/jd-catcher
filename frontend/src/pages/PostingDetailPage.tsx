@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchPosting } from '../api/postings'
+import { usePageView } from '../hooks/usePageView'
+import { logEvent } from '../utils/logEvent'
 import type { PostingDetail } from '../types/posting'
 
 function formatDate(value: string | null) {
@@ -24,6 +26,8 @@ export default function PostingDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  usePageView('posting_detail_view', {}, { postingId: Number(postingId) })
+
   useEffect(() => {
     if (!postingId) return
     fetchPosting(Number(postingId))
@@ -44,7 +48,23 @@ export default function PostingDetailPage() {
         <h1>{posting.title || '제목 없는 공고'}</h1>
         <p className="detail-job">{posting.job_type || '직무 미기재'}</p>
         <div className="detail-actions">
-          {posting.apply_url && <a className="primary-button" href={posting.apply_url} target="_blank" rel="noreferrer">홈페이지 지원 ↗</a>}
+          {posting.apply_url && (
+            <a
+              className="primary-button"
+              href={posting.apply_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() =>
+                void logEvent(
+                  'apply_url_click',
+                  { apply_url: posting.apply_url },
+                  { postingId: posting.id },
+                )
+              }
+            >
+              홈페이지 지원 ↗
+            </a>
+          )}
           <button className="secondary-button" onClick={() => undefined}>관심 공고 추가</button>
         </div>
       </header>
@@ -86,7 +106,18 @@ export default function PostingDetailPage() {
             {posting.cover_letter_questions.length > 0 ? <div className="question-list">{posting.cover_letter_questions.map((question) => <article className="question-item" key={question.id}><div className="question-meta"><span>{question.role_name || '공통 문항'}</span>{question.char_limit && <small>{question.char_limit.toLocaleString()}자</small>}</div><p>{question.question_text}</p></article>)}</div> : <p className="muted">등록된 자소서 문항이 없습니다.</p>}
           </section>
         </div>
-        <aside className="source-panel"><span className="section-label">SOURCE</span><p>링커리어 원문에서 수집한 공고입니다.</p><a href={posting.linkareer_url} target="_blank" rel="noreferrer">원문 보기 ↗</a></aside>
+        <aside className="source-panel">
+          <span className="section-label">SOURCE</span>
+          <p>링커리어 원문에서 수집한 공고입니다.</p>
+          <a
+            href={posting.linkareer_url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => void logEvent('posting_source_link_click', {}, { postingId: posting.id })}
+          >
+            원문 보기 ↗
+          </a>
+        </aside>
       </div>
     </main>
   )
