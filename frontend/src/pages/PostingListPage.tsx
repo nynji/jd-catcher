@@ -74,8 +74,8 @@ export default function PostingListPage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">JD CATCHER / OPEN ROLES</p>
-          <h1>내 역량에 맞는<br /><em>기회를 고르세요.</em></h1>
-          <p className="header-copy">직무명이 아닌, 공고 본문의 요구 역량을 기준으로 모은 인턴십입니다.</p>
+          <h1>수집된 채용공고를<br /><em>모두 확인하세요.</em></h1>
+          <p className="header-copy">공고 원문 그대로, 필터링 없이 모은 목록입니다. 이력서를 올리면 내 역량에 맞는 공고만 따로 확인할 수 있어요.</p>
         </div>
         <div className="header-side">
           <div className="header-stat"><strong>{total ?? '—'}</strong><span>공고 수</span></div>
