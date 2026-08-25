@@ -101,7 +101,7 @@ export default function ResumePage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">RESUME</p>
-          <h1>이력서를 올리면<br /><em>AI가 역량을 정리해드려요.</em></h1>
+          <h1>이력서, 포트폴리오, 경험정리를 올리면<br /><em>AI가 역량을 정리해드려요.</em></h1>
           <p className="header-copy">PDF·워드·엑셀·텍스트 파일을 올리거나(여러 개 동시 가능) 텍스트를 직접 붙여넣으면, 역량을 추출하고 등록된 공고와 매칭해드립니다.</p>
         </div>
       </header>
